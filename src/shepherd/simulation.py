@@ -3,6 +3,7 @@ from ulid import ULID
 from random import randrange, choices
 from dataclasses import dataclass
 from typing import Optional
+import networkx as nx
 
 
 from shepherd.shepherd.base import Shepherd
@@ -37,7 +38,7 @@ class FlockSettings:
 class Flock:
     """A flock simulation object"""
 
-    tags: list[TagId] = []
+    tags: nx.Graph
     sheep: dict[SheepId, Sheep]
     pasture: dict[ShepherdId, PastureState] = {}
     settings: FlockSettings

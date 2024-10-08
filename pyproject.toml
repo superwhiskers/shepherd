@@ -13,11 +13,14 @@ dependencies = [
     "ortools>=9.10.4067",
     "scikit-learn>=1.5.1",
     "python-ulid>=2.7.0",
-    "textual>=0.72.0",
     "mypy>=1.10.1",
+    "pandas-stubs>=2.2.2.240603",
+    "networkx>=3.3",
+    "networkx-stubs>=0.0.1",
+    "pyqt6>=6.7.1",
 ]
 license = "0BSD"
-readme = "README.md"
+readme = "readme.md"
 requires-python = ">= 3.8"
 
 [project.scripts]

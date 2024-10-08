@@ -12,7 +12,8 @@ class Dummy(Sheep):
     A dummy Sheep
 
     This Sheep will only ever rate content served to it in one way, indicated
-    to it at initialization
+    to it at initialization. It does not have any predefined preferences with
+    regard to content
     """
 
     response: Response = Response.POSITIVE
@@ -21,4 +22,4 @@ class Dummy(Sheep):
         return self
 
     def process_feed(self, feed: Feed) -> Responses:
-        return Responses(items=[Response.POSITIVE for _ in feed.items])
+        return Responses(items=[self.response for _ in feed.items])
