@@ -21,32 +21,17 @@ class SimulationGraph:
     def __init__(self) -> None:
         self.graph = nx.Graph()
 
-    def add_users(self, n_users: int) -> list[ULID]:
-        """
-        Adds a specified amount of users to the simulation, returning their
-        identifiers
-        """
-        users = [ULID() for _ in range(n_users)]
+    def add_users(self, users: list[ULID]) -> None:
+        """Adds a list of users to the simulation"""
         self.graph.add_nodes_from(users, node_type="user", color="#ffb8b8")
-        return users
 
-    def add_tags(self, n_tags: int) -> list[ULID]:
-        """
-        Adds a specified amount of tags to the simulation, returning their
-        identifiers
-        """
-        tags = [ULID() for _ in range(n_tags)]
+    def add_tags(self, tags: list[ULID]) -> None:
+        """Adds a list of tags to the simulation"""
         self.graph.add_nodes_from(tags, node_type="tag", color="#00eb00")
-        return tags
 
-    def add_content(self, n_content: int) -> list[ULID]:
-        """
-        Adds a specified amount of content to the simulation, returning their
-        identifiers
-        """
-        content = [ULID() for _ in range(n_content)]
-        self.graph.add_nodes_from(content, node_type="content", color="#c7c7ff")
-        return content
+    def add_item(self, items: list[ULID]) -> None:
+        """Adds a list of items to the simulation"""
+        self.graph.add_nodes_from(items, node_type="items", color="#c7c7ff")
 
     def add_new_tag_groups(
         self, max_groups: int, tags: list[ULID]
@@ -145,7 +130,7 @@ class SimulationGraph:
         self,
         source_nodes: list[ULID],
         target_nodes: list[ULID],
-        maximum_edges: int = 10,
+        edge_bounds: tuple[int, int] = (1, 10),
     ) -> None:
         """
         Adds singular edges between nodes specified in the source_nodes and
@@ -156,7 +141,7 @@ class SimulationGraph:
         the edge, sampled from a uniform distribution
         """
         for source in source_nodes:
-            num_edges = random.randint(1, maximum_edges)
+            num_edges = random.randint(edge_bounds[0], edge_bounds[1])
             connected_tags = random.sample(
                 target_nodes, min(num_edges, len(target_nodes))
             )

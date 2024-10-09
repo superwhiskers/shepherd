@@ -11,6 +11,7 @@ from shepherd.sheep.base import Sheep
 from shepherd.ids import ShepherdId, SheepId, ItemId, EpochId, TagId
 from shepherd.epoch import Epoch
 from shepherd.feed import Item
+from shepherd.graph import SimulationGraph
 
 
 @dataclass(frozen=True)
@@ -26,19 +27,38 @@ class FlockSettings:
     """Settings for the simulation"""
 
     """Bounds on the number of tags added at the start of each epoch"""
-    n_tags_bounds: tuple[Optional[int], int] = (None, 20)
+    n_tags_bounds: tuple[Optional[int], int] = (None, 5)
 
     """Bounds on the number of items added at the start of each epoch"""
-    n_items_bounds: tuple[Optional[int], int] = (None, 100)
+    n_items_bounds: tuple[Optional[int], int] = (None, 50)
 
     """Bounds on the number of tags assigned to a new Item"""
     n_item_tags_bounds: tuple[int, int] = (1, 10)
+
+    """The bounds on the initial number of tags used to seed the simulation"""
+    initial_n_tags_bounds: tuple[Optional[int], int] = (20, 40)
+
+    """
+    The bounds on the initial number of items used to seed the simulation
+    """
+    initial_n_items_bounds: tuple[Optional[int], int] = (40, 60)
+
+    """
+    An approximate measure of how many tags belong in a group
+
+    This is used to determine the upper limit on how many groups should be
+    added when there is a sufficient amount of tags orphaned from a group
+    """
+    average_tags_per_group: int = 7
+
+    """The threshold of orphaned tags at which new groups will be formed"""
+    orphaned_tag_threshold: int = 20
 
 
 class Flock:
     """A flock simulation object"""
 
-    tags: nx.Graph
+    simulation_graph: SimulationGraph
     sheep: dict[SheepId, Sheep]
     pasture: dict[ShepherdId, PastureState] = {}
     settings: FlockSettings
