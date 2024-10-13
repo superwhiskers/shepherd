@@ -1,14 +1,13 @@
+from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Self
-from collections.abc import Iterable
-from abc import ABC, abstractmethod
+
 from ulid import ULID
 
-
-from shepherd.ids import ShepherdId, SheepId
 from shepherd.epoch import Epoch
-from shepherd.sheep.base import PackagedSheep
 from shepherd.feed import Feed, Responses
+from shepherd.ids import SheepId, ShepherdId, TagId
 
 
 @dataclass(frozen=True)
@@ -18,7 +17,9 @@ class Shepherd(ABC):
     id: ShepherdId = ShepherdId(ULID())
 
     @abstractmethod
-    def introduce_to(self, sheep: Iterable[PackagedSheep]) -> Self:
+    def introduce_to(
+        self, sheep: Iterable[tuple[SheepId, list[TagId]]]
+    ) -> Self:
         """
         Introduce a Shepherd to an iterable of Sheep
 
@@ -44,6 +45,8 @@ class Shepherd(ABC):
         pass
 
     @abstractmethod
-    def incorporate_responses(self, sheep: SheepId, responses: Responses) -> Self:
+    def incorporate_responses(
+        self, sheep: SheepId, responses: Responses
+    ) -> Self:
         """Incorporate responses to a Feed from a Sheep into the Shepherd"""
         pass

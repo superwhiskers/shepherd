@@ -1,10 +1,13 @@
 import random
+from collections.abc import Sequence
 from itertools import combinations, product
-from ulid import ULID
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from ulid import ULID
+
+from shepherd.ids import ItemId, SheepId, TagId
 
 
 class SimulationGraph:
@@ -21,21 +24,21 @@ class SimulationGraph:
     def __init__(self) -> None:
         self.graph = nx.Graph()
 
-    def add_users(self, users: list[ULID]) -> None:
-        """Adds a list of users to the simulation"""
-        self.graph.add_nodes_from(users, node_type="user", color="#ffb8b8")
+    def add_sheep(self, sheep: list[SheepId]) -> None:
+        """Adds a list of sheep to the simulation"""
+        self.graph.add_nodes_from(sheep, node_type="sheep", color="#ffb8b8")
 
-    def add_tags(self, tags: list[ULID]) -> None:
+    def add_tags(self, tags: list[TagId]) -> None:
         """Adds a list of tags to the simulation"""
         self.graph.add_nodes_from(tags, node_type="tag", color="#00eb00")
 
-    def add_item(self, items: list[ULID]) -> None:
+    def add_items(self, items: list[ItemId]) -> None:
         """Adds a list of items to the simulation"""
         self.graph.add_nodes_from(items, node_type="items", color="#c7c7ff")
 
     def add_new_tag_groups(
-        self, max_groups: int, tags: list[ULID]
-    ) -> tuple[list[list[ULID]], list[ULID]]:
+        self, max_groups: int, tags: list[TagId]
+    ) -> tuple[list[list[TagId]], list[TagId]]:
         """
         Forms up to max_groups tag groups from the provided tags
 
@@ -77,8 +80,8 @@ class SimulationGraph:
         return (tag_groups, orphans)
 
     def add_to_tag_groups(
-        self, groups: list[list[ULID]], tags: list[ULID]
-    ) -> tuple[list[list[ULID]], list[ULID]]:
+        self, groups: list[list[TagId]], tags: list[TagId]
+    ) -> tuple[list[list[TagId]], list[TagId]]:
         """
         Adds tags to existing tag groups
 
@@ -128,20 +131,29 @@ class SimulationGraph:
 
     def connect_extremities(
         self,
-        source_nodes: list[ULID],
-        target_nodes: list[ULID],
+        source_nodes: Sequence[SheepId | ItemId],
+        target_nodes: list[TagId],
         edge_bounds: tuple[int, int] = (1, 10),
     ) -> None:
         """
         Adds singular edges between nodes specified in the source_nodes and
         target_nodes lists
 
-        From one up to maximum_edges edges may be added from a source node to
-        distinct target nodes. A weight in the range [0.1, 1.0] is assigned to
-        the edge, sampled from a uniform distribution
+        A number of edges within the range specified by edge_bounds will be
+        added from a source node to distinct target nodes. A weight in the
+        range [0.1, 1.0] is assigned to the edge, sampled from a uniform
+        distribution
         """
+
+        # TODO: add some behavior here where we "magically" connect new tags
+        #       to source nodes. the chance of this happening will be computed
+        #       based on the weight associated with the edge between the
+        #       source node and target node combined with the weight
+        #       associated with the edge between the candidate tag and the tag
+        #       already connected to the source node
+
         for source in source_nodes:
-            num_edges = random.randint(edge_bounds[0], edge_bounds[1])
+            num_edges = random.randint(*edge_bounds)
             connected_tags = random.sample(
                 target_nodes, min(num_edges, len(target_nodes))
             )

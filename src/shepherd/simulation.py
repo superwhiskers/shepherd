@@ -1,22 +1,27 @@
 from collections.abc import Iterable
-from ulid import ULID
-from random import randrange, choices
 from dataclasses import dataclass
+from random import choices, randint
 from typing import Optional
+
 import networkx as nx
+from ulid import ULID
 
-
-from shepherd.shepherd.base import Shepherd
-from shepherd.sheep.base import Sheep
-from shepherd.ids import ShepherdId, SheepId, ItemId, EpochId, TagId
+import shepherd.sheep as sheep
 from shepherd.epoch import Epoch
 from shepherd.feed import Item
 from shepherd.graph import SimulationGraph
+from shepherd.ids import EpochId, ItemId, SheepId, ShepherdId, TagId
+from shepherd.shepherd.base import Shepherd
 
 
 @dataclass(frozen=True)
 class PastureState:
-    """State contained within a Pasture value"""
+    """
+    State contained within a Pasture value
+
+    This structure maps a Shepherd to a Sheep and a list of ItemIds which
+    correspond to Items a Sheep has been given by the Shepherd
+    """
 
     shepherd: Shepherd
     sheep: dict[SheepId, list[ItemId]]
@@ -27,31 +32,43 @@ class FlockSettings:
     """Settings for the simulation"""
 
     """Bounds on the number of tags added at the start of each epoch"""
-    n_tags_bounds: tuple[Optional[int], int] = (None, 5)
+    n_tags_bounds: tuple[int, int] = (0, 5)
 
     """Bounds on the number of items added at the start of each epoch"""
-    n_items_bounds: tuple[Optional[int], int] = (None, 50)
+    n_items_bounds: tuple[int, int] = (0, 50)
 
     """Bounds on the number of tags assigned to a new Item"""
-    n_item_tags_bounds: tuple[int, int] = (1, 10)
+    n_item_tags_bounds: tuple[int, int] = (5, 10)
 
-    """The bounds on the initial number of tags used to seed the simulation"""
-    initial_n_tags_bounds: tuple[Optional[int], int] = (20, 40)
+    """Bounds on the number of tags a sheep has"""
+    n_sheep_tags_bounds: tuple[int, int] = (5, 25)
 
-    """
-    The bounds on the initial number of items used to seed the simulation
-    """
-    initial_n_items_bounds: tuple[Optional[int], int] = (40, 60)
+    """Bounds on the initial number of tags used to seed the simulation"""
+    initial_n_tags_bounds: tuple[int, int] = (20, 40)
+
+    """Bounds on the initial number of items used to seed the simulation"""
+    initial_n_items_bounds: tuple[int, int] = (40, 60)
+
+    """Bounds on the initial number of sheep added to the simulation"""
+    initial_n_sheep_bounds: tuple[int, int] = (20, 40)
 
     """
     An approximate measure of how many tags belong in a group
 
     This is used to determine the upper limit on how many groups should be
     added when there is a sufficient amount of tags orphaned from a group
+
+    Additionally, this is used when adding the first tags. This should be
+    at most the lower bound of initial_n_tags_bounds, but ideally much lower
+    than that
     """
     average_tags_per_group: int = 7
 
-    """The threshold of orphaned tags at which new groups will be formed"""
+    """
+    The threshold of orphaned tags at which new groups will be formed
+
+    This should be at most the lower bound of initial_n_tags_bounds
+    """
     orphaned_tag_threshold: int = 20
 
 
@@ -59,119 +76,146 @@ class Flock:
     """A flock simulation object"""
 
     simulation_graph: SimulationGraph
-    sheep: dict[SheepId, Sheep]
-    pasture: dict[ShepherdId, PastureState] = {}
+    pastures: dict[ShepherdId, PastureState] = {}
     settings: FlockSettings
+    epochs: list[Epoch]
+
+    # we may be able to grab these from the graph but i don't think it'd be
+    # very efficient to do often
+    tags: list[TagId]
+    tag_groups: list[list[TagId]]
+    tag_orphans: list[TagId]
+
+    # likewise here
+    sheep: list[SheepId]
+    items: list[ItemId]
 
     def __init__(
         self,
         shepherds: Iterable[Shepherd],
-        sheep: Iterable[Sheep],
         settings: FlockSettings,
     ) -> None:
+        self.simulation_graph = SimulationGraph()
         self.settings = settings
-        self.sheep = {sheep.id: sheep for sheep in sheep}
+        self.tag_orphans = []
+        self.epochs = []
 
-        for shepherd in shepherds:
-            self.pasture[shepherd.id] = PastureState(
-                shepherd=shepherd, sheep={sheep.id: [] for sheep in self.sheep.values()}
-            )
-
-        # it's probably a good idea to fill the tag list with some initial
-        # amount to counteract there not being many filled in subsequent epochs
         self.tags = [
             TagId(ULID())
-            for _ in range(
-                randrange(self.settings.n_tags_bounds[1])
-                if self.settings.n_tags_bounds[0] is None
-                else randrange(
-                    self.settings.n_tags_bounds[0], self.settings.n_tags_bounds[1]
-                )
-            )
+            for _ in range(randint(*self.settings.initial_n_tags_bounds))
         ]
+        self.simulation_graph.add_tags(self.tags)
+        self.tag_groups, tag_orphans = (
+            self.simulation_graph.add_new_tag_groups(
+                len(self.tags) // self.settings.average_tags_per_group,
+                self.tags,
+            )
+        )
+        self.tag_orphans.extend(tag_orphans)
 
-        temporary_epoch = Epoch(id=EpochId(ULID()), items=[], tags=self.tags)
+        self.sheep = [
+            SheepId(ULID())
+            for _ in range(randint(*self.settings.initial_n_sheep_bounds))
+        ]
+        self.simulation_graph.add_sheep(self.sheep)
+        self.simulation_graph.connect_extremities(
+            self.sheep, self.tags, self.settings.n_sheep_tags_bounds
+        )
 
-        self.sheep = {
-            id: sheep.begin(temporary_epoch) for (id, sheep) in self.sheep.items()
-        }
-        self.pasture = {
+        for shepherd in shepherds:
+            self.pastures[shepherd.id] = PastureState(
+                shepherd=shepherd,
+                sheep={sheep: [] for sheep in self.sheep},
+            )
+
+        self.items = [
+            ItemId(ULID())
+            for _ in range(randint(*self.settings.initial_n_items_bounds))
+        ]
+        self.simulation_graph.add_items(self.items)
+        self.simulation_graph.connect_extremities(
+            self.items, self.tags, self.settings.n_item_tags_bounds
+        )
+
+        introduction_epoch = Epoch(
+            id=EpochId(ULID()), items=[], tags=self.tags
+        )
+        self.epochs.append(introduction_epoch)
+
+        self.pastures = {
             id: PastureState(
-                shepherd=state.shepherd.begin(temporary_epoch).introduce_to(
-                    map(lambda s: s.package(), self.sheep.values())
+                shepherd=state.shepherd.begin(
+                    introduction_epoch
+                ).introduce_to(
+                    [
+                        (sheep, list(self.simulation_graph.graph[sheep]))
+                        for sheep in self.sheep
+                    ]
                 ),
                 sheep=state.sheep,
             )
-            for (id, state) in self.pasture.items()
+            for id, state in self.pastures.items()
         }
 
     def simulate_epoch(self) -> None:
-        # TODO: generate a graph of tag associations with probabilities linking
-        #       them so we can more accurately model how tags actually work in
-        #       practice. right now, it's completely random which isn't
-        #       reflective of how content is actually tagged in real life
-
         new_tags = [
             TagId(ULID())
-            for _ in range(
-                randrange(self.settings.n_tags_bounds[1])
-                if self.settings.n_tags_bounds[0] is None
-                else randrange(
-                    self.settings.n_tags_bounds[0], self.settings.n_tags_bounds[1]
-                )
-            )
+            for _ in range(randint(*self.settings.n_tags_bounds))
         ]
+        self.tag_groups, tag_orphans = (
+            self.simulation_graph.add_to_tag_groups(self.tag_groups, new_tags)
+        )
+        self.tag_orphans.extend(tag_orphans)
         self.tags.extend(new_tags)
 
-        new_item_ids = [
-            ItemId(ULID())
-            for _ in range(
-                randrange(self.settings.n_items_bounds[1])
-                if self.settings.n_items_bounds[0] is None
-                else randrange(
-                    self.settings.n_items_bounds[0], self.settings.n_items_bounds[1]
-                )
-            )
-        ]
-
         new_items = [
-            Item(
-                id=id,
-                tags=choices(
-                    self.tags,
-                    k=randrange(
-                        self.settings.n_item_tags_bounds[0],
-                        self.settings.n_item_tags_bounds[1],
-                    ),
-                ),
-            )
-            for id in new_item_ids
+            ItemId(ULID())
+            for _ in range(randint(*self.settings.n_items_bounds))
         ]
+        self.simulation_graph.add_items(new_items)
+        self.simulation_graph.connect_extremities(
+            new_items, self.tags, self.settings.n_item_tags_bounds
+        )
+        self.items.extend(new_items)
 
-        epoch = Epoch(id=EpochId(ULID()), items=new_items, tags=new_tags)
+        epoch = Epoch(
+            id=EpochId(ULID()),
+            items=[
+                Item(id=id, tags=list(self.simulation_graph.graph[id]))
+                for id in new_items
+            ],
+            tags=new_tags,
+        )
+        self.epochs.append(epoch)
 
-        self.sheep = {id: sheep.begin(epoch) for (id, sheep) in self.sheep.items()}
-        self.pasture = {
+        # TODO: alter sheep preferences here by some minute amount
+
+        self.pastures = {
             id: PastureState(
                 shepherd=state.shepherd.begin(epoch).introduce_to(
-                    map(lambda s: s.package(), self.sheep.values())
+                    [
+                        (sheep, list(self.simulation_graph.graph[sheep]))
+                        for sheep in self.sheep
+                    ]
                 ),
                 sheep=state.sheep,
             )
-            for (id, state) in self.pasture.items()
+            for (id, state) in self.pastures.items()
         }
 
-        new_pasture = {}
-        for id, state in self.pasture.items():
-            shepherd: Shepherd
+        new_pastures = {}
+        for id, state in self.pastures.items():
+            shepherd = state.shepherd
             new_sheep = {}
             for sheep_id, seen in state.sheep.items():
-                shepherd, feed = state.shepherd.build_feed(sheep_id)
+                shepherd, feed = shepherd.build_feed(sheep_id)
                 seen.extend(feed.items)
                 shepherd = shepherd.incorporate_responses(
-                    sheep_id, self.sheep[sheep_id].process_feed(feed)
+                    sheep_id,
+                    sheep.process_feed(self.simulation_graph, sheep_id, feed),
                 )
                 new_sheep[sheep_id] = seen
-
-            new_pasture[id] = PastureState(shepherd=shepherd, sheep=new_sheep)
-        self.pasture = new_pasture
+            new_pastures[id] = PastureState(
+                shepherd=shepherd, sheep=new_sheep
+            )
+        self.pastures = new_pastures

@@ -40,7 +40,7 @@ mypy==1.11.2
 mypy-extensions==1.0.0
     # via black
     # via mypy
-networkx==3.3
+networkx==3.4.1
     # via networkx-stubs
     # via shepherd
 networkx-stubs==0.0.1
@@ -68,7 +68,7 @@ pandas==2.2.3
     # via ortools
     # via prophet
     # via shepherd
-pandas-stubs==2.2.2.240909
+pandas-stubs==2.2.3.241009
     # via shepherd
 pathspec==0.12.1
     # via black
@@ -94,7 +94,7 @@ python-dateutil==2.9.0.post0
     # via holidays
     # via matplotlib
     # via pandas
-python-ulid==2.7.0
+python-ulid==3.0.0
     # via shepherd
 pytz==2024.2
     # via pandas
