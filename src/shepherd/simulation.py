@@ -26,7 +26,6 @@ class PastureState:
     shepherd: Shepherd
     sheep: dict[SheepId, list[ItemId]]
 
-
 @dataclass(frozen=True)
 class FlockSettings:
     """Settings for the simulation"""
@@ -167,6 +166,16 @@ class Flock:
         )
         self.tag_orphans.extend(tag_orphans)
         self.tags.extend(new_tags)
+
+        if len(self.tag_orphans) >= self.settings.orphaned_tag_threshold:
+            new_tag_groups, self.tag_orphans = (
+                self.simulation_graph.add_new_tag_groups(
+                    len(self.tag_orphans)
+                    // self.settings.average_tags_per_group,
+                    self.tag_orphans,
+                )
+            )
+            self.tag_groups.extend(new_tag_groups)
 
         new_items = [
             ItemId(ULID())

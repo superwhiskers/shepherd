@@ -5,7 +5,6 @@ from typing import Optional
 
 import pandas as pd
 
-from shepherd.feed import Response
 from shepherd.shepherd.base import Shepherd
 from shepherd.shepherd.dummy import Dummy as DummyShepherd
 from shepherd.simulation import Flock, FlockSettings
@@ -14,14 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> int:
-    """
-    flock = Flock([DummyShepherd()], [DummySheep()], FlockSettings())
+    flock = Flock([DummyShepherd()], FlockSettings())
 
     for _ in range(20):
         flock.simulate_epoch()
+        print(flock.tags)
 
     print(flock.tags)
-    """
 
     logging.basicConfig(filename="shepherd.log", level=logging.INFO)
 

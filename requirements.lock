@@ -20,7 +20,7 @@ cycler==0.12.1
     # via matplotlib
 fonttools==4.54.1
     # via matplotlib
-holidays==0.58
+holidays==0.59
     # via prophet
 immutabledict==4.2.0
     # via ortools
@@ -32,11 +32,11 @@ kiwisolver==1.4.7
     # via matplotlib
 matplotlib==3.9.2
     # via prophet
-mypy==1.11.2
+mypy==1.12.1
     # via shepherd
 mypy-extensions==1.0.0
     # via mypy
-networkx==3.4.1
+networkx==3.4.2
     # via networkx-stubs
     # via shepherd
 networkx-stubs==0.0.1
@@ -53,6 +53,8 @@ numpy==1.26.4
     # via scipy
     # via shepherd
     # via stanio
+optype==0.6.1
+    # via scipy-stubs
 ortools==9.11.4210
     # via shepherd
 packaging==24.1
@@ -65,7 +67,7 @@ pandas==2.2.3
     # via shepherd
 pandas-stubs==2.2.3.241009
     # via shepherd
-pillow==10.4.0
+pillow==11.0.0
     # via matplotlib
 plotly==5.24.1
     # via shepherd
@@ -73,14 +75,8 @@ prophet==1.1.6
     # via shepherd
 protobuf==5.26.1
     # via ortools
-pyparsing==3.1.4
+pyparsing==3.2.0
     # via matplotlib
-pyqt6==6.7.1
-    # via shepherd
-pyqt6-qt6==6.7.3
-    # via pyqt6
-pyqt6-sip==13.8.0
-    # via pyqt6
 python-dateutil==2.9.0.post0
     # via holidays
     # via matplotlib
@@ -93,6 +89,9 @@ scikit-learn==1.5.2
     # via shepherd
 scipy==1.14.1
     # via scikit-learn
+    # via shepherd
+scipy-stubs==1.14.1.2
+    # via shepherd
 six==1.16.0
     # via python-dateutil
 stanio==0.5.1
@@ -108,5 +107,6 @@ types-pytz==2024.2.0.20241003
     # via pandas-stubs
 typing-extensions==4.12.2
     # via mypy
+    # via optype
 tzdata==2024.2
     # via pandas

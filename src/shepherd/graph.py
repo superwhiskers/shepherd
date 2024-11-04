@@ -43,8 +43,8 @@ class SimulationGraph:
         Forms up to max_groups tag groups from the provided tags
 
         This method builds "groups" of tags (which are all connected to one
-        another by edges with weights in the range [0.5, 1.0]) and forms edges
-        across groups (with weights in the range [0.1, 0.5]). Returns a tuple
+        another by edges with weights in the range [5, 10]) and forms edges
+        across groups (with weights in the range [0.1, 5]). Returns a tuple
         containing nested lists of tag groups and a separate list of orphaned
         tags (tags not part of a group)
         """
@@ -68,13 +68,13 @@ class SimulationGraph:
 
         for group in tag_groups:
             for a, b in combinations(group, 2):
-                weight = rng.uniform(0.5, 1.0)
+                weight = rng.uniform(5, 10)
                 self.graph.add_edge(a, b, weight=weight)
 
         for group_a, group_b in combinations(tag_groups, 2):
             for a, b in product(group_a, group_b):
                 if rng.random() <= 0.01:
-                    weight = rng.uniform(0.1, 0.5)
+                    weight = rng.uniform(0.1, 5)
                     self.graph.add_edge(a, b, weight=weight)
 
         return (tag_groups, orphans)
@@ -111,17 +111,17 @@ class SimulationGraph:
 
         for i, members in enumerate(new_members):
             for a, b in combinations(members, 2):
-                weight = rng.uniform(0.5, 1.0)
+                weight = rng.uniform(5, 10)
                 self.graph.add_edge(a, b, weight=weight)
 
             for a, b in product(members, groups[i]):
-                weight = rng.uniform(0.5, 1.0)
+                weight = rng.uniform(5, 10)
                 self.graph.add_edge(a, b, weight=weight)
 
         for i, j in combinations(list(range(len(groups))), 2):
             for a, b in product(new_members[i], groups[j]):
                 if rng.random() <= 0.01:
-                    weight = rng.uniform(0.1, 0.5)
+                    weight = rng.uniform(0.1, 5)
                     self.graph.add_edge(a, b, weight=weight)
 
         for i, group in enumerate(groups):
@@ -141,7 +141,7 @@ class SimulationGraph:
 
         A number of edges within the range specified by edge_bounds will be
         added from a source node to distinct target nodes. A weight in the
-        range [0.1, 1.0] is assigned to the edge, sampled from a uniform
+        range [0.1, 10] is assigned to the edge, sampled from a uniform
         distribution
         """
 
@@ -158,5 +158,5 @@ class SimulationGraph:
                 target_nodes, min(num_edges, len(target_nodes))
             )
             for tag in connected_tags:
-                weight = random.uniform(0.1, 1.0)
+                weight = random.uniform(0.1, 10)
                 self.graph.add_edge(source, tag, weight=weight)
