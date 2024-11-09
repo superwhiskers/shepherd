@@ -1,5 +1,4 @@
 use anyhow::Context;
-use petgraph::visit::IntoNeighbors;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -9,7 +8,7 @@ use std::{
 use crate::{
     feed::{Feed, Responses},
     graph::Simulation,
-    ids::{EpochId, GraphId, SheepId, TagId},
+    ids::{EpochId, SheepId, TagId},
     simulation::Epoch,
 };
 
@@ -45,6 +44,13 @@ impl<'de> Shepherd<'de> {
             stdin,
             stdout: serde_json::Deserializer::from_reader(stdout).into_iter(),
         })
+    }
+
+    /// Stop the [`Shepherd`]'s underlying process
+    pub fn stop(mut self) -> anyhow::Result<()> {
+        self.process
+            .kill()
+            .context("Unable to stop the shepherd process")
     }
 
     /// Write an arbitrary [`SimulationEvent`] to this [`Shepherd`]'s
@@ -100,6 +106,7 @@ impl<'de> Shepherd<'de> {
     }
 }
 
+#[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum SimulationEvent {
@@ -120,6 +127,7 @@ pub enum SimulationEvent {
     },
 }
 
+#[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum ShepherdEvent {

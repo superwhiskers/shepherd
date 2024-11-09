@@ -62,11 +62,14 @@ fn main() -> anyhow::Result<()> {
     )
     .context("Unable to initialize the simulation")?;
 
-    for i in 0..n_epochs {
+    for _ in 0..n_epochs {
         simulation
             .simulate_epoch(&mut rand::thread_rng())
             .context("Unable to simulate an epoch")?;
     }
 
+    simulation
+        .stop()
+        .context("Unable to cleanly stop the simulation")?;
     Ok(())
 }

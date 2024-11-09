@@ -4,9 +4,7 @@ use rand::{distributions::uniform::SampleRange, prelude::*};
 use statrs::{distribution::Poisson, StatsError};
 use std::collections::HashSet;
 
-use crate::ids::{
-    self, GraphId, GraphIdKind, ItemId, NodeType, SheepId, TagId,
-};
+use crate::ids::{self, GraphId, NodeType, TagId};
 
 /// A container type holding the graph organizing the simulation data
 ///
@@ -120,7 +118,7 @@ impl Simulation {
         let mut tags = tags.into_iter().collect::<Vec<TagId>>();
         tags.shuffle(rng);
 
-        if tags.len() == 0 {
+        if tags.is_empty() {
             return Ok(());
         }
 

@@ -24,6 +24,7 @@ pub fn parse_args<'de>() -> anyhow::Result<Args<'de>> {
         match arg {
             Short('h') | Long("help") => {
                 usage();
+                #[allow(clippy::exit)]
                 process::exit(0);
             }
             Short('n') | Long("n-epochs") => {
@@ -41,6 +42,7 @@ pub fn parse_args<'de>() -> anyhow::Result<Args<'de>> {
             a => {
                 println!("unknown argument: {:?}", a);
                 usage();
+                #[allow(clippy::exit)]
                 process::exit(1);
             }
         }

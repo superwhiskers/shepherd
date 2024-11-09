@@ -2,7 +2,6 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use statrs::StatsError;
 use std::collections::{HashMap, HashSet};
-use tracing::{debug, info};
 
 use crate::{
     feed::{Feed, Responses},
@@ -90,7 +89,7 @@ impl Default for Settings {
 /// new epoch within the simulation
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Epoch {
-    /// Tags introduced at the beginniClone, Eq, PartialEq, Debug, ng of this epoch
+    /// Tags introduced at the beginning of this epoch
     pub tags: Vec<TagId>,
 
     /// Items introduced at the beginning of this epoch
@@ -296,6 +295,15 @@ impl<'de> Simulation<'de> {
                     sheep::process_feed(&mut *rng, &self.graph, sheep, feed),
                 );
             }
+        }
+
+        Ok(())
+    }
+
+    /// Stop the simulation, terminating all [`Shepherd`]s
+    pub fn stop(self) -> anyhow::Result<()> {
+        for (shepherd, _) in self.shepherds {
+            shepherd.stop()?;
         }
 
         Ok(())
