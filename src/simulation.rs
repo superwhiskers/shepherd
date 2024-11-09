@@ -7,6 +7,7 @@ use crate::{
     feed::{Feed, Responses},
     graph::Simulation as SimulationGraph,
     ids::{EpochId, ItemId, SheepId, ShepherdId, TagId},
+    sheep,
     shepherd::{Shepherd, SimulationEvent},
 };
 
@@ -49,15 +50,18 @@ pub struct Settings {
     pub orphaned_tag_threshold: usize,
 
     /// Hook that is called when a new epoch is started
+    #[allow(clippy::type_complexity)]
     pub new_epoch_hook: Option<Box<dyn FnMut(EpochId, &Epoch)>>,
 
     /// Hook that is called when a [`Shepherd`] has generated a [`Feed`] for
     /// a sheep
+    #[allow(clippy::type_complexity)]
     pub feed_generation_hook:
         Option<Box<dyn FnMut(ShepherdId, SheepId, &Feed)>>,
 
     /// Hook that is called when a sheep has finished rating a [`Feed`] given
     /// by a [`Shepherd`]
+    #[allow(clippy::type_complexity)]
     pub feed_rated_hook:
         Option<Box<dyn FnMut(ShepherdId, SheepId, &Responses)>>,
 }
@@ -83,9 +87,9 @@ impl Default for Settings {
 
 /// A representation of the tags and content introduced at the beginning of a
 /// new epoch within the simulation
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Epoch {
-    /// Tags introduced at the beginning of this epoch
+    /// Tags introduced at the beginniClone, Eq, PartialEq, Debug, ng of this epoch
     pub tags: Vec<TagId>,
 
     /// Items introduced at the beginning of this epoch
@@ -94,7 +98,7 @@ pub struct Epoch {
 
 /// A container for the state associated with a simulation
 #[derive(Default)]
-pub struct Simulation {
+pub struct Simulation<'de> {
     /// The epoch counter
     current_epoch: EpochId,
 
@@ -121,13 +125,13 @@ pub struct Simulation {
 
     /// [`Shepherd`]s present within the simulation and a map keeping track of
     /// the items each one has shown each sheep
-    shepherds: Vec<(Shepherd, HashMap<SheepId, HashSet<ItemId>>)>,
+    shepherds: Vec<(Shepherd<'de>, HashMap<SheepId, HashSet<ItemId>>)>,
 }
 
-impl Simulation {
+impl<'de> Simulation<'de> {
     pub fn new(
         rng: &mut (impl Rng + ?Sized),
-        shepherds: impl IntoIterator<Item = Shepherd>,
+        shepherds: impl IntoIterator<Item = Shepherd<'de>>,
         settings: Settings,
     ) -> Result<Self, StatsError> {
         let mut simulation = Self {
@@ -202,5 +206,92 @@ impl Simulation {
         }
 
         Ok(simulation)
+    }
+
+    pub fn simulate_epoch(
+        &mut self,
+        rng: &mut (impl Rng + ?Sized),
+    ) -> Result<(), StatsError> {
+        let new_tags = self
+            .graph
+            .create_nodes(rng.gen_range(
+                self.settings.n_tags_bounds.0..=self.settings.n_tags_bounds.1,
+            ))
+            .collect::<Vec<_>>();
+        self.graph.add_to_tag_groups(
+            &mut *rng,
+            &mut self.tag_groups,
+            &mut self.tag_orphans,
+            new_tags.iter().copied(),
+        )?;
+        self.tags.extend(new_tags.iter());
+
+        if self.tag_orphans.len() >= self.settings.orphaned_tag_threshold {
+            let orphans = self.tag_orphans.clone();
+            self.tag_orphans.clear();
+            self.graph.add_new_tag_groups(
+                &mut *rng,
+                &mut self.tag_groups,
+                &mut self.tag_orphans,
+                orphans.len() / self.settings.average_tags_per_group,
+                orphans,
+            )?;
+        }
+
+        let new_items = self
+            .graph
+            .create_nodes(rng.gen_range(
+                self.settings.n_items_bounds.0
+                    ..=self.settings.n_items_bounds.1,
+            ))
+            .collect::<Vec<_>>();
+        self.graph.connect_extremities(
+            &mut *rng,
+            new_items.iter().copied(),
+            self.tags.iter().copied(),
+            self.settings.n_item_tags_bounds.0
+                ..=self.settings.n_item_tags_bounds.1,
+        );
+
+        self.current_epoch.0 += 1;
+        let current_epoch = Epoch {
+            tags: new_tags,
+            items: new_items,
+        };
+
+        if let Some(hook) = &mut self.settings.new_epoch_hook {
+            hook(self.current_epoch, &current_epoch);
+        }
+
+        // TODO: alter sheep preferences here by some minute amount
+        // TODO: maybe add new sheep here
+
+        let current_epoch = SimulationEvent::BeginEpoch(current_epoch);
+        for (shepherd, sheep_seen) in &mut self.shepherds {
+            shepherd.write_event(&current_epoch);
+            for sheep in self.sheep.iter().copied() {
+                shepherd.introduce_to(&self.graph, sheep);
+            }
+
+            // we don't merge the loop above into the one below as we want to
+            // make sure the shepherd has the full picture prior to building
+            // feeds
+
+            for sheep in self.sheep.iter().copied() {
+                let feed = shepherd.build_feed(sheep);
+                if let Some(seen) = sheep_seen.get_mut(&sheep) {
+                    seen.extend(feed.0.iter().copied());
+                } else {
+                    sheep_seen
+                        .insert(sheep, feed.0.iter().copied().collect());
+                }
+                shepherd.incorporate_responses(
+                    sheep,
+                    sheep::process_feed(&mut *rng, &self.graph, sheep, feed),
+                );
+            }
+        }
+
+        Ok(())
     }
 }

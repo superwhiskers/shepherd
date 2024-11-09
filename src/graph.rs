@@ -108,7 +108,7 @@ impl Simulation {
     /// This method adds on tags from the provided tags to the provided groups
     /// and adds any orphans to the provided set. Weights of edges follow the
     /// same rules outlined in the description of `add_new_tag_groups`
-    fn add_to_tag_groups(
+    pub fn add_to_tag_groups(
         &mut self,
         rng: &mut (impl Rng + ?Sized),
         groups: &mut [HashSet<TagId>],

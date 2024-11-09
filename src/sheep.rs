@@ -39,10 +39,10 @@ pub fn process_feed(
                 .get(&item.0)
             {
                 match rng.gen::<f64>() {
-                    c if c <= p_positive(*distance as f64) => {
+                    c if c <= p_positive(f64::from(*distance)) => {
                         Response::Positive
                     }
-                    c if c <= p_neutral(*distance as f64) => {
+                    c if c <= p_neutral(f64::from(*distance)) => {
                         Response::Neutral
                     }
                     _ => Response::Negative,
