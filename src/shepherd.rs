@@ -1,3 +1,4 @@
+use anyhow::Context;
 use petgraph::visit::IntoNeighbors;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -8,7 +9,7 @@ use std::{
 use crate::{
     feed::{Feed, Responses},
     graph::Simulation,
-    ids::{GraphId, SheepId, TagId},
+    ids::{EpochId, GraphId, SheepId, TagId},
     simulation::Epoch,
 };
 
@@ -25,25 +26,25 @@ pub struct Shepherd<'de> {
 
 impl<'de> Shepherd<'de> {
     /// Create a new [`Shepherd`] from a command name or path
-    pub fn new(program: impl AsRef<OsStr>) -> Self {
+    pub fn new(program: impl AsRef<OsStr>) -> anyhow::Result<Self> {
         let mut process = Command::new(program)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
-            .expect("Unable to spawn a shepherd process");
+            .context("Unable to spawn a shepherd process")?;
 
-        let stdin = process.stdin.take().expect(
+        let stdin = process.stdin.take().context(
             "Unable to extract the stdin handle from the shepherd process",
-        );
-        let stdout = process.stdout.take().expect(
+        )?;
+        let stdout = process.stdout.take().context(
             "Unable to extract the stdout handle from the shepherd process",
-        );
+        )?;
 
-        Self {
+        Ok(Self {
             process,
             stdin,
             stdout: serde_json::Deserializer::from_reader(stdout).into_iter(),
-        }
+        })
     }
 
     /// Write an arbitrary [`SimulationEvent`] to this [`Shepherd`]'s
@@ -65,7 +66,7 @@ impl<'de> Shepherd<'de> {
     /// Request that this [`Shepherd`] build a feed for the specified sheep
     /// and wait for it to return the feed
     pub fn build_feed(&mut self, sheep: SheepId) -> Feed {
-        self.write_event(&SimulationEvent::FeedRequest(sheep));
+        self.write_event(&SimulationEvent::FeedRequest { sheep });
         match self.read_event() {
             ShepherdEvent::Feed(feed) => feed,
             event => panic!(
@@ -86,8 +87,8 @@ impl<'de> Shepherd<'de> {
     }
 
     /// Notify this [`Shepherd`] of the start of a new epoch
-    pub fn begin(&mut self, epoch: Epoch) {
-        self.write_event(&SimulationEvent::BeginEpoch(epoch))
+    pub fn begin(&mut self, id: EpochId, data: Epoch) {
+        self.write_event(&SimulationEvent::BeginEpoch { id, data })
     }
 
     /// Introduce this [`Shepherd`] to a sheep
@@ -102,12 +103,17 @@ impl<'de> Shepherd<'de> {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum SimulationEvent {
-    BeginEpoch(Epoch),
+    BeginEpoch {
+        id: EpochId,
+        data: Epoch,
+    },
     SheepIntroduction {
         sheep: SheepId,
         associated_tags: Vec<TagId>,
     },
-    FeedRequest(SheepId),
+    FeedRequest {
+        sheep: SheepId,
+    },
     FeedResponses {
         sheep: SheepId,
         responses: Responses,

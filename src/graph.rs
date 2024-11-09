@@ -63,7 +63,7 @@ impl Simulation {
 
         let mut n_stored = 0;
         for mut n_tags in
-            Poisson::new((tags.len() / (max_groups + 1)) as f64)?
+            Poisson::new((tags.len() as f64) / ((max_groups + 1) as f64))?
                 .sample_iter(&mut *rng)
                 .map(|n| n as usize)
                 .take(max_groups)
@@ -120,9 +120,13 @@ impl Simulation {
         let mut tags = tags.into_iter().collect::<Vec<TagId>>();
         tags.shuffle(rng);
 
+        if tags.len() == 0 {
+            return Ok(());
+        }
+
         let mut n_stored = 0;
         for mut n_tags in
-            Poisson::new((tags.len() / (groups.len() + 1)) as f64)?
+            Poisson::new((tags.len() as f64) / ((groups.len() + 1) as f64))?
                 .sample_iter(&mut *rng)
                 .map(|n| n as usize)
                 .take(groups.len())
@@ -155,7 +159,7 @@ impl Simulation {
             }
         }
 
-        for (i, j) in (0..groups.len()).tuple_combinations() {
+        for (i, j) in (0..new_members.len()).tuple_combinations() {
             for (GraphId(a, _), GraphId(b, _)) in
                 new_members[i].iter().cartesian_product(groups[j].iter())
             {

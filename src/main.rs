@@ -26,6 +26,16 @@
 #![deny(clippy::option_option)]
 #![deny(clippy::mut_mut)]
 
+use anyhow::Context;
+use std::io;
+use tracing::info;
+
+use crate::{
+    args::Args,
+    simulation::{Settings, Simulation},
+};
+
+mod args;
 mod feed;
 mod graph;
 mod ids;
@@ -33,6 +43,30 @@ mod sheep;
 mod shepherd;
 mod simulation;
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().with_writer(io::stderr).init();
+
+    let Args {
+        n_epochs,
+        shepherds,
+    } = args::parse_args().context("Unable to parse arguments")?;
+    let mut simulation = Simulation::new(
+        &mut rand::thread_rng(),
+        shepherds,
+        Settings {
+            new_epoch_hook: Some(Box::new(|i, _| {
+                info!("starting epoch {:?}", i)
+            })),
+            ..Default::default()
+        },
+    )
+    .context("Unable to initialize the simulation")?;
+
+    for i in 0..n_epochs {
+        simulation
+            .simulate_epoch(&mut rand::thread_rng())
+            .context("Unable to simulate an epoch")?;
+    }
+
+    Ok(())
 }

@@ -2,6 +2,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use statrs::StatsError;
 use std::collections::{HashMap, HashSet};
+use tracing::{debug, info};
 
 use crate::{
     feed::{Feed, Responses},
@@ -196,8 +197,10 @@ impl<'de> Simulation<'de> {
             hook(simulation.current_epoch, &introduction_epoch);
         }
 
-        let introduction_epoch =
-            SimulationEvent::BeginEpoch(introduction_epoch);
+        let introduction_epoch = SimulationEvent::BeginEpoch {
+            id: simulation.current_epoch,
+            data: introduction_epoch,
+        };
         for (shepherd, _) in &mut simulation.shepherds {
             shepherd.write_event(&introduction_epoch);
             for sheep in simulation.sheep.iter().copied() {
@@ -266,7 +269,10 @@ impl<'de> Simulation<'de> {
         // TODO: alter sheep preferences here by some minute amount
         // TODO: maybe add new sheep here
 
-        let current_epoch = SimulationEvent::BeginEpoch(current_epoch);
+        let current_epoch = SimulationEvent::BeginEpoch {
+            id: self.current_epoch,
+            data: current_epoch,
+        };
         for (shepherd, sheep_seen) in &mut self.shepherds {
             shepherd.write_event(&current_epoch);
             for sheep in self.sheep.iter().copied() {
