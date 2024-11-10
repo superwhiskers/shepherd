@@ -75,10 +75,6 @@ impl<'de> Shepherd<'de> {
         self.write_event(&SimulationEvent::FeedRequest { sheep });
         match self.read_event() {
             ShepherdEvent::Feed(feed) => feed,
-            event => panic!(
-                "Unexpected event kind returned to build_feed call: {:?}",
-                event
-            ),
         }
     }
 
@@ -108,7 +104,7 @@ impl<'de> Shepherd<'de> {
 
 #[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "kind", content = "data")]
 pub enum SimulationEvent {
     BeginEpoch {
         id: EpochId,
@@ -129,7 +125,7 @@ pub enum SimulationEvent {
 
 #[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "kind", content = "data")]
 pub enum ShepherdEvent {
     Feed(Feed),
 }

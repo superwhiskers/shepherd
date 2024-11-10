@@ -2,7 +2,7 @@ use anyhow::Context;
 use lexopt::prelude::*;
 use std::{env, process};
 
-use crate::shepherd::Shepherd;
+use shepherd_lib::shepherd::Shepherd;
 
 #[derive(Default)]
 pub struct Args<'de> {

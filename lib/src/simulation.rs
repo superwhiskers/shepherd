@@ -73,11 +73,11 @@ impl Default for Settings {
             n_items_bounds: (0, 50),
             n_item_tags_bounds: (5, 10),
             n_sheep_tags_bounds: (5, 25),
-            initial_n_tags_bounds: (20, 40),
+            initial_n_tags_bounds: (25, 40),
             initial_n_items_bounds: (40, 60),
             initial_n_sheep_bounds: (20, 40),
-            average_tags_per_group: 7,
-            orphaned_tag_threshold: 20,
+            average_tags_per_group: 3,
+            orphaned_tag_threshold: 50,
             new_epoch_hook: None,
             feed_generation_hook: None,
             feed_rated_hook: None,
@@ -126,6 +126,36 @@ pub struct Simulation<'de> {
     /// [`Shepherd`]s present within the simulation and a map keeping track of
     /// the items each one has shown each sheep
     shepherds: Vec<(Shepherd<'de>, HashMap<SheepId, HashSet<ItemId>>)>,
+}
+
+/// A container for the deconstructed parts of a simulation
+pub struct SimulationParts {
+    /// The last epoch run by the simulation
+    pub final_epoch: EpochId,
+
+    /// The graph of the simulation
+    pub graph: SimulationGraph,
+
+    /// The settings of the simulation
+    pub settings: Settings,
+
+    /// The tags present in the simulation
+    pub tags: Vec<TagId>,
+
+    /// The sheep present in the simulation
+    pub sheep: Vec<SheepId>,
+
+    /// The items present in the simulation
+    pub items: Vec<ItemId>,
+
+    /// The tag groups present in the simulation
+    pub tag_groups: Vec<HashSet<TagId>>,
+
+    /// The orphaned tags present in the simulation
+    pub tag_orphans: HashSet<TagId>,
+
+    /// IDs of the shepherds present in the simulation
+    pub shepherd_ids: Vec<ShepherdId>,
 }
 
 impl<'de> Simulation<'de> {
@@ -272,7 +302,12 @@ impl<'de> Simulation<'de> {
             id: self.current_epoch,
             data: current_epoch,
         };
-        for (shepherd, sheep_seen) in &mut self.shepherds {
+        for (id, (shepherd, sheep_seen)) in self
+            .shepherds
+            .iter_mut()
+            .enumerate()
+            .map(|(id, data)| (ShepherdId(id), data))
+        {
             shepherd.write_event(&current_epoch);
             for sheep in self.sheep.iter().copied() {
                 shepherd.introduce_to(&self.graph, sheep);
@@ -284,28 +319,67 @@ impl<'de> Simulation<'de> {
 
             for sheep in self.sheep.iter().copied() {
                 let feed = shepherd.build_feed(sheep);
+
+                if let Some(hook) = &mut self.settings.feed_generation_hook {
+                    hook(id, sheep, &feed);
+                }
+
                 if let Some(seen) = sheep_seen.get_mut(&sheep) {
                     seen.extend(feed.0.iter().copied());
                 } else {
                     sheep_seen
                         .insert(sheep, feed.0.iter().copied().collect());
                 }
-                shepherd.incorporate_responses(
-                    sheep,
-                    sheep::process_feed(&mut *rng, &self.graph, sheep, feed),
-                );
+
+                let responses =
+                    sheep::process_feed(&mut *rng, &self.graph, sheep, feed);
+
+                if let Some(hook) = &mut self.settings.feed_rated_hook {
+                    hook(id, sheep, &responses);
+                }
+
+                shepherd.incorporate_responses(sheep, responses);
             }
         }
 
         Ok(())
     }
 
-    /// Stop the simulation, terminating all [`Shepherd`]s
-    pub fn stop(self) -> anyhow::Result<()> {
-        for (shepherd, _) in self.shepherds {
+    /// Stop the simulation, terminating all [`Shepherd`]s and return the
+    /// simulation graph with associated metadata
+    pub fn stop(self) -> anyhow::Result<SimulationParts> {
+        let Self {
+            current_epoch: final_epoch,
+            settings,
+            graph,
+            tags,
+            sheep,
+            items,
+            tag_groups,
+            tag_orphans,
+            shepherds,
+        } = self;
+        let mut shepherd_ids = Vec::with_capacity(shepherds.len());
+
+        for (id, (shepherd, _)) in shepherds
+            .into_iter()
+            .enumerate()
+            .map(|(id, data)| (ShepherdId(id), data))
+        {
             shepherd.stop()?;
+            shepherd_ids.push(id);
         }
 
-        Ok(())
+        Ok(SimulationParts {
+            final_epoch,
+            graph,
+            settings,
+            tags,
+            sheep,
+            items,
+            tag_groups,
+            tag_orphans,
+            shepherd_ids,
+        })
     }
 }

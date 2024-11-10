@@ -122,6 +122,10 @@ impl Simulation {
             return Ok(());
         }
 
+        //TODO: rewrite this segment of code to use a small probability value
+        //      to determine tag in tag group membership instead of assuming
+        //      some amount make it in
+
         let mut n_stored = 0;
         for mut n_tags in
             Poisson::new((tags.len() as f64) / ((groups.len() + 1) as f64))?
