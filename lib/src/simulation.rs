@@ -2,6 +2,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use statrs::StatsError;
 use std::collections::{HashMap, HashSet};
+use tracing::info;
 
 use crate::{
     feed::{Feed, Responses},
@@ -69,14 +70,14 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            n_tags_bounds: (0, 2),
+            n_tags_bounds: (0, 1),
             n_items_bounds: (0, 50),
-            n_item_tags_bounds: (5, 10),
+            n_item_tags_bounds: (5, 7),
             n_sheep_tags_bounds: (5, 25),
-            initial_n_tags_bounds: (25, 40),
+            initial_n_tags_bounds: (20, 30),
             initial_n_items_bounds: (40, 60),
             initial_n_sheep_bounds: (20, 40),
-            average_tags_per_group: 3,
+            average_tags_per_group: 5,
             orphaned_tag_threshold: 50,
             new_epoch_hook: None,
             feed_generation_hook: None,
@@ -284,6 +285,7 @@ impl<'de> Simulation<'de> {
             self.settings.n_item_tags_bounds.0
                 ..=self.settings.n_item_tags_bounds.1,
         );
+        self.items.extend(new_items.iter());
 
         self.current_epoch.0 += 1;
         let current_epoch = Epoch {
@@ -295,8 +297,19 @@ impl<'de> Simulation<'de> {
             hook(self.current_epoch, &current_epoch);
         }
 
+        info!(
+            n_tags = self.tags.len(),
+            n_orphans = self.tag_orphans.len(),
+            n_groups = self.tag_groups.len(),
+            n_items = self.items.len(),
+            n_sheep = self.sheep.len(),
+            p_edges = ((2f64 * self.graph.0.edge_count() as f64)
+                / (self.graph.0.node_count() as f64
+                    * (self.graph.0.node_count() - 1) as f64))
+        );
+
         // TODO: alter sheep preferences here by some minute amount
-        // TODO: maybe add new sheep here
+        // TODO: add new sheep here
 
         let current_epoch = SimulationEvent::BeginEpoch {
             id: self.current_epoch,

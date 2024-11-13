@@ -61,7 +61,7 @@ impl Simulation {
 
         let mut n_stored = 0;
         for mut n_tags in
-            Poisson::new((tags.len() as f64) / ((max_groups + 1) as f64))?
+            Poisson::new((tags.len() as f64) / ((max_groups + 5) as f64))?
                 .sample_iter(&mut *rng)
                 .map(|n| n as usize)
                 .take(max_groups)
@@ -92,7 +92,7 @@ impl Simulation {
             for (GraphId(a, _), GraphId(b, _)) in
                 group_a.iter().cartesian_product(group_b)
             {
-                if rng.gen::<f64>() <= 0.01 {
+                if rng.gen::<f64>() <= 1e-3 {
                     self.0.add_edge(*a, *b, rng.gen_range(1..=5));
                 }
             }
@@ -122,13 +122,9 @@ impl Simulation {
             return Ok(());
         }
 
-        //TODO: rewrite this segment of code to use a small probability value
-        //      to determine tag in tag group membership instead of assuming
-        //      some amount make it in
-
         let mut n_stored = 0;
         for mut n_tags in
-            Poisson::new((tags.len() as f64) / ((groups.len() + 1) as f64))?
+            Poisson::new((tags.len() as f64) / ((groups.len() + 50) as f64))?
                 .sample_iter(&mut *rng)
                 .map(|n| n as usize)
                 .take(groups.len())
@@ -165,7 +161,7 @@ impl Simulation {
             for (GraphId(a, _), GraphId(b, _)) in
                 new_members[i].iter().cartesian_product(groups[j].iter())
             {
-                if rng.gen::<f64>() <= 0.01 {
+                if rng.gen::<f64>() <= 1e-3 {
                     self.0.add_edge(*a, *b, rng.gen_range(1..=5));
                 }
             }

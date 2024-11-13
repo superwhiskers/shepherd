@@ -27,12 +27,15 @@
 #![deny(clippy::mut_mut)]
 
 use anyhow::Context;
+use petgraph::dot::Dot;
 use std::io;
 use tracing::info;
-use petgraph::dot::Dot;
 
 use crate::args::Args;
-use shepherd_lib::{graph::Simulation as SimulationGraph, simulation::{Settings, Simulation, SimulationParts}};
+use shepherd_lib::{
+    graph::Simulation as SimulationGraph,
+    simulation::{Settings, Simulation, SimulationParts},
+};
 
 mod args;
 
@@ -67,7 +70,10 @@ fn main() -> anyhow::Result<()> {
             .context("Unable to simulate an epoch")?;
     }
 
-    let SimulationParts { graph: SimulationGraph(graph), .. } = simulation
+    let SimulationParts {
+        graph: SimulationGraph(graph),
+        ..
+    } = simulation
         .stop()
         .context("Unable to cleanly stop the simulation")?;
 
