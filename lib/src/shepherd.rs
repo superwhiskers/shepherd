@@ -1,7 +1,8 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
+    path::Path,
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
 };
 
@@ -14,6 +15,7 @@ use crate::{
 
 /// A wrapper around a child process which implements a feed algorithm
 pub struct Shepherd<'de> {
+    name: String,
     process: Child,
     stdin: ChildStdin,
     stdout: serde_json::StreamDeserializer<
@@ -23,9 +25,16 @@ pub struct Shepherd<'de> {
     >,
 }
 
-impl<'de> Shepherd<'de> {
+impl Shepherd<'_> {
     /// Create a new [`Shepherd`] from a command name or path
     pub fn new(program: impl AsRef<OsStr>) -> anyhow::Result<Self> {
+        let name = Path::new(&program)
+            .file_name()
+            .ok_or(anyhow!(
+                "No file name was present in the shepherd's executable path"
+            ))?
+            .to_string_lossy()
+            .into_owned();
         let mut process = Command::new(program)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -40,10 +49,16 @@ impl<'de> Shepherd<'de> {
         )?;
 
         Ok(Self {
+            name,
             process,
             stdin,
             stdout: serde_json::Deserializer::from_reader(stdout).into_iter(),
         })
+    }
+
+    /// Get the [`Shepherd`]'s assigned name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Stop the [`Shepherd`]'s underlying process

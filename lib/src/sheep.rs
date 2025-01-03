@@ -1,6 +1,7 @@
 use petgraph::algo;
 use rand::prelude::*;
 use std::ops::Neg;
+use tracing::info;
 
 use crate::{
     feed::{Feed, Response, Responses},
@@ -11,13 +12,13 @@ use crate::{
 /// Calculate the probability of a positive rating given the input sum of
 /// weights along the shortest path
 pub fn p_positive(distance: f64) -> f64 {
-    distance.neg().powi(2)
+    2f64.powf(distance.neg())
 }
 
 /// Calculate the probability of a neutral rating given the input sum of
 /// weights along the shortest path
 pub fn p_neutral(distance: f64) -> f64 {
-    distance.powi(9) / distance.powi(10)
+    9f64.powf(distance) / 10f64.powf(distance)
 }
 
 /// Process a feed given the tag graph, sheep id, and feed
@@ -40,12 +41,37 @@ pub fn process_feed(
             {
                 match rng.gen::<f64>() {
                     c if c <= p_positive(f64::from(*distance)) => {
+                        info!(
+                            sheep = sheep.0,
+                            item = item.0,
+                            distance = distance,
+                            probability = c,
+                            threshold = p_positive(f64::from(*distance)),
+                            rating = "positive"
+                        );
                         Response::Positive
                     }
                     c if c <= p_neutral(f64::from(*distance)) => {
+                        info!(
+                            sheep = sheep.0,
+                            item = item.0,
+                            distance = distance,
+                            probability = c,
+                            threshold = p_neutral(f64::from(*distance)),
+                            rating = "neutral"
+                        );
                         Response::Neutral
                     }
-                    _ => Response::Negative,
+                    _ => {
+                        info!(
+                            sheep = sheep.0,
+                            item = item.0,
+                            distance = distance,
+                            rating = "negative"
+                        );
+
+                        Response::Negative
+                    }
                 }
             } else {
                 // to keep the model simple, we always respond negatively to
@@ -55,6 +81,12 @@ pub fn process_feed(
                 // - the tag graph is taken to be axiomatic
                 // - everything is comprehensively tagged and no more existing
                 //   tags fit
+                info!(
+                    sheep = sheep.0,
+                    item = item.0,
+                    distance = "unconnected",
+                    rating = "negative"
+                );
                 Response::Negative
             },
         ));

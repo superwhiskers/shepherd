@@ -1,6 +1,6 @@
 use anyhow::Context;
 use lexopt::prelude::*;
-use std::{env, process};
+use std::{env, path::PathBuf, process};
 
 use shepherd_lib::shepherd::Shepherd;
 
@@ -8,11 +8,12 @@ use shepherd_lib::shepherd::Shepherd;
 pub struct Args<'de> {
     pub n_epochs: usize,
     pub shepherds: Vec<Shepherd<'de>>,
+    pub database_file: Option<PathBuf>,
 }
 
 fn usage() {
     println!(
-        "usage: {} [-h|--help] [-n|--n-epochs=EPOCHS] [shepherds...]",
+        "usage: {} [-h|--help] [-n|--n-epochs=EPOCHS] [-d|--database=DATABASE_FILE] [shepherds...]",
         env::args().next().as_deref().unwrap_or("shepherd")
     );
 }
@@ -33,6 +34,14 @@ pub fn parse_args<'de>() -> anyhow::Result<Args<'de>> {
                     .context("No argument given to -n or --n-epochs")?
                     .parse()
                     .context("Invalid argument to -n or --n-epochs")?;
+            }
+            Short('d') | Long("database") => {
+                args.database_file = Some(
+                    parser
+                        .value()
+                        .context("No argument given to -d or --database")?
+                        .into(),
+                );
             }
             Value(shepherd) => {
                 args.shepherds.push(Shepherd::new(shepherd).context(

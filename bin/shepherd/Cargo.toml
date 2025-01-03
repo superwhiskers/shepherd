@@ -13,11 +13,11 @@ lexopt = "0.3"
 tracing = "0.1"
 anyhow = "1"
 rand = "0.8"
-petgraph = "0.6"
+petgraph = "0.7"
 
-[dependencies.polars]
-version = "0.44"
-features = ["performant"]
+[dependencies.duckdb]
+version = "1"
+features = ["bundled"]
 
 [dependencies.tracing-subscriber]
 version = "0.3"

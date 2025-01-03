@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use petgraph::{csr::Csr, prelude::*, visit::IntoNeighbors};
 use rand::{distributions::uniform::SampleRange, prelude::*};
-use statrs::{distribution::Poisson, StatsError};
+use statrs::distribution::{Poisson, PoissonError};
 use std::collections::HashSet;
 
 use crate::ids::{self, GraphId, NodeType, TagId};
@@ -54,7 +54,7 @@ impl Simulation {
         orphans: &mut HashSet<TagId>,
         max_groups: usize,
         tags: impl IntoIterator<Item = TagId>,
-    ) -> Result<(), StatsError> {
+    ) -> Result<(), PoissonError> {
         groups.reserve(max_groups);
         let mut tags = tags.into_iter().collect::<Vec<TagId>>();
         tags.shuffle(rng);
@@ -63,7 +63,7 @@ impl Simulation {
         for mut n_tags in
             Poisson::new((tags.len() as f64) / ((max_groups + 5) as f64))?
                 .sample_iter(&mut *rng)
-                .map(|n| n as usize)
+                .map(|n: u64| n as usize)
                 .take(max_groups)
         {
             if n_stored + n_tags >= tags.len() {
@@ -112,7 +112,7 @@ impl Simulation {
         groups: &mut [HashSet<TagId>],
         orphans: &mut HashSet<TagId>,
         tags: impl IntoIterator<Item = TagId>,
-    ) -> Result<(), StatsError> {
+    ) -> Result<(), PoissonError> {
         let mut new_members: Vec<HashSet<TagId>> =
             Vec::with_capacity(groups.len());
         let mut tags = tags.into_iter().collect::<Vec<TagId>>();
@@ -126,7 +126,7 @@ impl Simulation {
         for mut n_tags in
             Poisson::new((tags.len() as f64) / ((groups.len() + 50) as f64))?
                 .sample_iter(&mut *rng)
-                .map(|n| n as usize)
+                .map(|n: u64| n as usize)
                 .take(groups.len())
         {
             if n_stored + n_tags >= tags.len() {

@@ -1,6 +1,6 @@
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use statrs::StatsError;
+use statrs::distribution::PoissonError;
 use std::collections::{HashMap, HashSet};
 use tracing::info;
 
@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// Settings for the simulation
-pub struct Settings {
+pub struct Settings<'a> {
     /// Bounds on the number of tags added at the start of each epoch
     pub n_tags_bounds: (usize, usize),
 
@@ -52,36 +52,42 @@ pub struct Settings {
 
     /// Hook that is called when a new epoch is started
     #[allow(clippy::type_complexity)]
-    pub new_epoch_hook: Option<Box<dyn FnMut(EpochId, &Epoch)>>,
+    pub new_epoch_hook: Option<Box<dyn FnMut(EpochId, &Epoch) + 'a>>,
 
     /// Hook that is called when a [`Shepherd`] has generated a [`Feed`] for
     /// a sheep
     #[allow(clippy::type_complexity)]
     pub feed_generation_hook:
-        Option<Box<dyn FnMut(ShepherdId, SheepId, &Feed)>>,
+        Option<Box<dyn FnMut(ShepherdId, SheepId, &Feed) + 'a>>,
 
     /// Hook that is called when a sheep has finished rating a [`Feed`] given
     /// by a [`Shepherd`]
     #[allow(clippy::type_complexity)]
     pub feed_rated_hook:
-        Option<Box<dyn FnMut(ShepherdId, SheepId, &Responses)>>,
+        Option<Box<dyn FnMut(ShepherdId, SheepId, &Responses) + 'a>>,
+
+    /// Hook that is called after IDs are assigned to [`Shepherd`]s
+    #[allow(clippy::type_complexity)]
+    pub shepherd_assignment_hook:
+        Option<Box<dyn FnMut(HashMap<ShepherdId, String>) + 'a>>,
 }
 
-impl Default for Settings {
+impl Default for Settings<'_> {
     fn default() -> Self {
         Self {
-            n_tags_bounds: (0, 1),
+            n_tags_bounds: (0, 3),
             n_items_bounds: (0, 50),
             n_item_tags_bounds: (5, 7),
-            n_sheep_tags_bounds: (5, 25),
-            initial_n_tags_bounds: (20, 30),
+            n_sheep_tags_bounds: (5, 10),
+            initial_n_tags_bounds: (25, 50),
             initial_n_items_bounds: (40, 60),
-            initial_n_sheep_bounds: (20, 40),
-            average_tags_per_group: 5,
-            orphaned_tag_threshold: 50,
+            initial_n_sheep_bounds: (50, 100),
+            average_tags_per_group: 4,
+            orphaned_tag_threshold: 100,
             new_epoch_hook: None,
             feed_generation_hook: None,
             feed_rated_hook: None,
+            shepherd_assignment_hook: None,
         }
     }
 }
@@ -99,7 +105,7 @@ pub struct Epoch {
 
 /// A container for the state associated with a simulation
 #[derive(Default)]
-pub struct Simulation<'de> {
+pub struct Simulation<'a, 'de> {
     /// The epoch counter
     current_epoch: EpochId,
 
@@ -107,7 +113,7 @@ pub struct Simulation<'de> {
     graph: SimulationGraph,
 
     /// The settings of the simulation
-    settings: Settings,
+    settings: Settings<'a>,
 
     /// Tags present in the simulation
     tags: Vec<TagId>,
@@ -130,7 +136,7 @@ pub struct Simulation<'de> {
 }
 
 /// A container for the deconstructed parts of a simulation
-pub struct SimulationParts {
+pub struct SimulationParts<'a> {
     /// The last epoch run by the simulation
     pub final_epoch: EpochId,
 
@@ -138,7 +144,7 @@ pub struct SimulationParts {
     pub graph: SimulationGraph,
 
     /// The settings of the simulation
-    pub settings: Settings,
+    pub settings: Settings<'a>,
 
     /// The tags present in the simulation
     pub tags: Vec<TagId>,
@@ -159,12 +165,12 @@ pub struct SimulationParts {
     pub shepherd_ids: Vec<ShepherdId>,
 }
 
-impl<'de> Simulation<'de> {
+impl<'a, 'de> Simulation<'a, 'de> {
     pub fn new(
         rng: &mut (impl Rng + ?Sized),
         shepherds: impl IntoIterator<Item = Shepherd<'de>>,
-        settings: Settings,
-    ) -> Result<Self, StatsError> {
+        settings: Settings<'a>,
+    ) -> Result<Self, PoissonError> {
         let mut simulation = Self {
             settings,
             shepherds: shepherds
@@ -173,6 +179,22 @@ impl<'de> Simulation<'de> {
                 .collect(),
             ..Default::default()
         };
+
+        // NOTE: since for now we don't assign shepherds any additional id
+        //       this is just giving the hook indices into the shepherd vec,
+        //       but since this may change in the future this is probably a
+        //       good hook to have
+        if let Some(hook) = &mut simulation.settings.shepherd_assignment_hook
+        {
+            let mut shepherds =
+                HashMap::with_capacity(simulation.shepherds.len());
+            for (id, (shepherd, _)) in simulation.shepherds.iter().enumerate()
+            {
+                shepherds.insert(ShepherdId(id), shepherd.name().to_string());
+            }
+
+            hook(shepherds);
+        }
 
         simulation
             .tags
@@ -244,7 +266,7 @@ impl<'de> Simulation<'de> {
     pub fn simulate_epoch(
         &mut self,
         rng: &mut (impl Rng + ?Sized),
-    ) -> Result<(), StatsError> {
+    ) -> Result<(), PoissonError> {
         let new_tags = self
             .graph
             .create_nodes(rng.gen_range(
@@ -360,7 +382,7 @@ impl<'de> Simulation<'de> {
 
     /// Stop the simulation, terminating all [`Shepherd`]s and return the
     /// simulation graph with associated metadata
-    pub fn stop(self) -> anyhow::Result<SimulationParts> {
+    pub fn stop(self) -> anyhow::Result<SimulationParts<'a>> {
         let Self {
             current_epoch: final_epoch,
             settings,
