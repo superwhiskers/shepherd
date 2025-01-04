@@ -12,7 +12,7 @@ use crate::ids::{self, GraphId, NodeType, TagId};
 /// out in the tag graph Jupyter notebook, with some extensions to support
 /// gradually building it up across many epochs
 #[derive(Default)]
-pub struct Simulation(pub Csr<NodeType, u32, Undirected, usize>);
+pub struct Simulation(pub Csr<NodeType, u32, Directed, usize>);
 
 impl Simulation {
     /// Adds several nodes to the simulation
@@ -85,6 +85,7 @@ impl Simulation {
                 group.iter().tuple_combinations()
             {
                 self.0.add_edge(*a, *b, rng.gen_range(5..=10));
+                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
             }
         }
 
@@ -94,6 +95,7 @@ impl Simulation {
             {
                 if rng.gen::<f64>() <= 1e-3 {
                     self.0.add_edge(*a, *b, rng.gen_range(1..=5));
+                    self.0.add_edge(*b, *a, rng.gen_range(1..=5));
                 }
             }
         }
@@ -148,12 +150,14 @@ impl Simulation {
                 members.iter().tuple_combinations()
             {
                 self.0.add_edge(*a, *b, rng.gen_range(5..=10));
+                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
             }
 
             for (GraphId(a, _), GraphId(b, _)) in
                 members.iter().cartesian_product(groups[i].iter())
             {
                 self.0.add_edge(*a, *b, rng.gen_range(5..=10));
+                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
             }
         }
 
@@ -163,6 +167,7 @@ impl Simulation {
             {
                 if rng.gen::<f64>() <= 1e-3 {
                     self.0.add_edge(*a, *b, rng.gen_range(1..=5));
+                    self.0.add_edge(*b, *a, rng.gen_range(1..=5));
                 }
             }
         }
@@ -187,6 +192,7 @@ impl Simulation {
         source_nodes: impl IntoIterator<Item = GraphId<K>>,
         target_nodes: impl IntoIterator<Item = TagId> + Clone,
         edge_bounds: impl SampleRange<usize> + Clone,
+        reverse_direction: bool,
     ) where
         K: ids::IsItemOrSheep,
     {
@@ -204,7 +210,11 @@ impl Simulation {
                 .into_iter()
                 .choose_multiple(rng, n_edges)
             {
-                self.0.add_edge(source, tag, rng.gen_range(1..=10));
+                if reverse_direction {
+                    self.0.add_edge(tag, source, rng.gen_range(1..=10));
+                } else {
+                    self.0.add_edge(source, tag, rng.gen_range(1..=10));
+                }
             }
         }
     }

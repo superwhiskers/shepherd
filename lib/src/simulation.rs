@@ -224,6 +224,7 @@ impl<'a, 'de> Simulation<'a, 'de> {
             simulation.tags.iter().copied(),
             simulation.settings.n_sheep_tags_bounds.0
                 ..=simulation.settings.n_sheep_tags_bounds.1,
+            false,
         );
 
         simulation.items.extend(simulation.graph.create_nodes(
@@ -238,6 +239,7 @@ impl<'a, 'de> Simulation<'a, 'de> {
             simulation.tags.iter().copied(),
             simulation.settings.n_item_tags_bounds.0
                 ..=simulation.settings.n_item_tags_bounds.1,
+            true,
         );
 
         let introduction_epoch = Epoch {
@@ -306,6 +308,7 @@ impl<'a, 'de> Simulation<'a, 'de> {
             self.tags.iter().copied(),
             self.settings.n_item_tags_bounds.0
                 ..=self.settings.n_item_tags_bounds.1,
+            true,
         );
         self.items.extend(new_items.iter());
 
