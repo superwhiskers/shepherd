@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
                         items: new_items, ..
                     },
                 ..
-            } => items.extend(new_items),
+            } => items.extend(new_items.into_iter().map(|(id, _)| id)),
             SimulationEvent::FeedRequest { sheep } => {
                 let seen =
                     sheep_seen.entry(sheep).or_insert_with(HashSet::new);

@@ -7,7 +7,7 @@ use tracing::info;
 use crate::{
     feed::{Feed, Responses},
     graph::Simulation as SimulationGraph,
-    ids::{EpochId, ItemId, SheepId, ShepherdId, TagId},
+    ids::{EpochId, GraphId, ItemId, SheepId, ShepherdId, TagId},
     sheep,
     shepherd::{Shepherd, SimulationEvent},
 };
@@ -78,7 +78,7 @@ impl Default for Settings<'_> {
             n_tags_bounds: (0, 3),
             n_items_bounds: (0, 50),
             n_item_tags_bounds: (5, 7),
-            n_sheep_tags_bounds: (5, 10),
+            n_sheep_tags_bounds: (10, 15),
             initial_n_tags_bounds: (25, 50),
             initial_n_items_bounds: (40, 60),
             initial_n_sheep_bounds: (50, 100),
@@ -100,7 +100,7 @@ pub struct Epoch {
     pub tags: Vec<TagId>,
 
     /// Items introduced at the beginning of this epoch
-    pub items: Vec<ItemId>,
+    pub items: Vec<(ItemId, Vec<TagId>)>,
 }
 
 /// A container for the state associated with a simulation
@@ -244,7 +244,22 @@ impl<'a, 'de> Simulation<'a, 'de> {
 
         let introduction_epoch = Epoch {
             tags: simulation.tags.clone(),
-            items: simulation.items.clone(),
+            items: simulation
+                .items
+                .clone()
+                .into_iter()
+                .map(|id| {
+                    (
+                        id,
+                        simulation
+                            .graph
+                            .0
+                            .neighbors_undirected(id.0.into())
+                            .map(|id| GraphId::new(id.index()))
+                            .collect(),
+                    )
+                })
+                .collect(),
         };
 
         if let Some(hook) = &mut simulation.settings.new_epoch_hook {
@@ -315,7 +330,19 @@ impl<'a, 'de> Simulation<'a, 'de> {
         self.current_epoch.0 += 1;
         let current_epoch = Epoch {
             tags: new_tags,
-            items: new_items,
+            items: new_items
+                .into_iter()
+                .map(|id| {
+                    (
+                        id,
+                        self.graph
+                            .0
+                            .neighbors_undirected(id.0.into())
+                            .map(|id| GraphId::new(id.index()))
+                            .collect(),
+                    )
+                })
+                .collect(),
         };
 
         if let Some(hook) = &mut self.settings.new_epoch_hook {

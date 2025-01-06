@@ -33,11 +33,13 @@ pub fn process_feed(
     for item in feed.0 {
         responses.push((
             item,
-            if let Some(distance) =
-                algo::dijkstra(&graph.0, sheep.0, Some(item.0), |e| {
-                    *e.weight()
-                })
-                .get(&item.0)
+            if let Some(distance) = algo::dijkstra(
+                &graph.0,
+                sheep.0.into(),
+                Some(item.0.into()),
+                |e| *e.weight(),
+            )
+            .get(&item.0.into())
             {
                 match rng.gen::<f64>() {
                     c if c <= p_positive(f64::from(*distance)) => {

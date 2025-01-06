@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use petgraph::{csr::Csr, prelude::*, visit::IntoNeighbors};
+use petgraph::{prelude::*, Graph};
 use rand::{distributions::uniform::SampleRange, prelude::*};
 use statrs::distribution::{Poisson, PoissonError};
 use std::collections::HashSet;
@@ -8,11 +8,11 @@ use crate::ids::{self, GraphId, NodeType, TagId};
 
 /// A container type holding the graph organizing the simulation data
 ///
-/// Wraps a [`Csr`] with methods for working with the graph in the manner laid
-/// out in the tag graph Jupyter notebook, with some extensions to support
-/// gradually building it up across many epochs
+/// Wraps a [`Graph`] with methods for working with the graph in the manner
+/// laid out in the tag graph Jupyter notebook, with some extensions to
+/// support gradually building it up across many epochs
 #[derive(Default)]
-pub struct Simulation(pub Csr<NodeType, u32, Directed, usize>);
+pub struct Simulation(pub Graph<NodeType, u32, Directed, usize>);
 
 impl Simulation {
     /// Adds several nodes to the simulation
@@ -24,7 +24,8 @@ impl Simulation {
     where
         K: ids::GraphIdKind,
     {
-        (0..n).map(move |_| GraphId::new(self.0.add_node(K::NODE_TYPE)))
+        (0..n)
+            .map(move |_| GraphId::new(self.0.add_node(K::NODE_TYPE).index()))
     }
 
     /// Get the associated tags of either a [`SheepId`] or an [`ItemId`]
@@ -39,7 +40,9 @@ impl Simulation {
     where
         K: ids::IsItemOrSheep,
     {
-        self.0.neighbors(id).map(GraphId::new)
+        self.0
+            .neighbors_undirected(id.into())
+            .map(|id| GraphId::new(id.index()))
     }
 
     /// Forms up to `max_groups` tag groups from the provided tags
@@ -84,8 +87,16 @@ impl Simulation {
             for (GraphId(a, _), GraphId(b, _)) in
                 group.iter().tuple_combinations()
             {
-                self.0.add_edge(*a, *b, rng.gen_range(5..=10));
-                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
+                self.0.add_edge(
+                    (*a).into(),
+                    (*b).into(),
+                    rng.gen_range(5..=10),
+                );
+                self.0.add_edge(
+                    (*b).into(),
+                    (*a).into(),
+                    rng.gen_range(5..=10),
+                );
             }
         }
 
@@ -94,8 +105,16 @@ impl Simulation {
                 group_a.iter().cartesian_product(group_b)
             {
                 if rng.gen::<f64>() <= 1e-3 {
-                    self.0.add_edge(*a, *b, rng.gen_range(1..=5));
-                    self.0.add_edge(*b, *a, rng.gen_range(1..=5));
+                    self.0.add_edge(
+                        (*a).into(),
+                        (*b).into(),
+                        rng.gen_range(1..=5),
+                    );
+                    self.0.add_edge(
+                        (*b).into(),
+                        (*a).into(),
+                        rng.gen_range(1..=5),
+                    );
                 }
             }
         }
@@ -149,15 +168,31 @@ impl Simulation {
             for (GraphId(a, _), GraphId(b, _)) in
                 members.iter().tuple_combinations()
             {
-                self.0.add_edge(*a, *b, rng.gen_range(5..=10));
-                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
+                self.0.add_edge(
+                    (*a).into(),
+                    (*b).into(),
+                    rng.gen_range(5..=10),
+                );
+                self.0.add_edge(
+                    (*b).into(),
+                    (*a).into(),
+                    rng.gen_range(5..=10),
+                );
             }
 
             for (GraphId(a, _), GraphId(b, _)) in
                 members.iter().cartesian_product(groups[i].iter())
             {
-                self.0.add_edge(*a, *b, rng.gen_range(5..=10));
-                self.0.add_edge(*b, *a, rng.gen_range(5..=10));
+                self.0.add_edge(
+                    (*a).into(),
+                    (*b).into(),
+                    rng.gen_range(5..=10),
+                );
+                self.0.add_edge(
+                    (*b).into(),
+                    (*a).into(),
+                    rng.gen_range(5..=10),
+                );
             }
         }
 
@@ -166,8 +201,16 @@ impl Simulation {
                 new_members[i].iter().cartesian_product(groups[j].iter())
             {
                 if rng.gen::<f64>() <= 1e-3 {
-                    self.0.add_edge(*a, *b, rng.gen_range(1..=5));
-                    self.0.add_edge(*b, *a, rng.gen_range(1..=5));
+                    self.0.add_edge(
+                        (*a).into(),
+                        (*b).into(),
+                        rng.gen_range(1..=5),
+                    );
+                    self.0.add_edge(
+                        (*b).into(),
+                        (*a).into(),
+                        rng.gen_range(1..=5),
+                    );
                 }
             }
         }
@@ -211,9 +254,17 @@ impl Simulation {
                 .choose_multiple(rng, n_edges)
             {
                 if reverse_direction {
-                    self.0.add_edge(tag, source, rng.gen_range(1..=10));
+                    self.0.add_edge(
+                        tag.into(),
+                        source.into(),
+                        rng.gen_range(1..=10),
+                    );
                 } else {
-                    self.0.add_edge(source, tag, rng.gen_range(1..=10));
+                    self.0.add_edge(
+                        source.into(),
+                        tag.into(),
+                        rng.gen_range(1..=10),
+                    );
                 }
             }
         }

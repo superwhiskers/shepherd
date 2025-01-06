@@ -4,6 +4,7 @@ members = [
 
   "bin/shepherd",
   "bin/dummy-shepherd",
+  "bin/tagged-shepherd",
 ]
 resolver = "2"
 
