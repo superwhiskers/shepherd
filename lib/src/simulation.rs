@@ -355,7 +355,7 @@ impl<'a, 'de> Simulation<'a, 'de> {
             n_groups = self.tag_groups.len(),
             n_items = self.items.len(),
             n_sheep = self.sheep.len(),
-            p_edges = ((2f64 * self.graph.0.edge_count() as f64)
+            p_edges = (self.graph.0.edge_count() as f64
                 / (self.graph.0.node_count() as f64
                     * (self.graph.0.node_count() - 1) as f64))
         );

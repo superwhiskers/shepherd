@@ -7,9 +7,9 @@ use std::{
 };
 
 use crate::{
-    feed::{Feed, Responses},
+    feed::{Feed, Response, Responses},
     graph::Simulation,
-    ids::{EpochId, SheepId, TagId},
+    ids::{EpochId, ItemId, SheepId, TagId},
     simulation::Epoch,
 };
 
@@ -100,7 +100,10 @@ impl Shepherd<'_> {
         sheep: SheepId,
         responses: Responses,
     ) {
-        self.write_event(&SimulationEvent::FeedResponses { sheep, responses })
+        self.write_event(&SimulationEvent::FeedResponses {
+            sheep,
+            responses: responses.into(),
+        })
     }
 
     /// Notify this [`Shepherd`] of the start of a new epoch
@@ -114,6 +117,24 @@ impl Shepherd<'_> {
             sheep,
             associated_tags: graph.associated_tags(sheep).collect(),
         })
+    }
+}
+
+/// A subset of the data provided in the full [`Responses`] structure
+///
+/// This exists to avoid revealing information about the underlying tag graph
+/// to shepherds
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct LimitedResponses(pub Vec<(ItemId, Response)>);
+
+impl From<Responses> for LimitedResponses {
+    fn from(Responses(inner): Responses) -> Self {
+        Self(
+            inner
+                .into_iter()
+                .map(|(id, response, _)| (id, response))
+                .collect(),
+        )
     }
 }
 
@@ -134,7 +155,7 @@ pub enum SimulationEvent {
     },
     FeedResponses {
         sheep: SheepId,
-        responses: Responses,
+        responses: LimitedResponses,
     },
 }
 
