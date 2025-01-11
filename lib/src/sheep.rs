@@ -1,6 +1,6 @@
 use petgraph::algo;
 use rand::prelude::*;
-use std::ops::{Add, Neg};
+use std::ops::Add;
 use tracing::info;
 
 use crate::{
@@ -12,13 +12,13 @@ use crate::{
 /// Calculate the probability of a positive rating given the input sum of
 /// weights along the shortest path
 pub fn p_positive(distance: f64) -> f64 {
-    2f64.powf(distance.neg())
+    3f64.powf(distance) / 4f64.powf(distance)
 }
 
 /// Calculate the probability of a neutral rating given the input sum of
 /// weights along the shortest path
 pub fn p_neutral(distance: f64) -> f64 {
-    9f64.powf(distance) / 10f64.powf(distance)
+    19f64.powf(distance) / 20f64.powf(distance)
 }
 
 /// Wrapper around a pair to count both the number of vertices visited and

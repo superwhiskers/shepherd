@@ -232,7 +232,7 @@ impl Simulation {
     pub fn connect_extremities<K>(
         &mut self,
         rng: &mut (impl Rng + ?Sized),
-        source_nodes: impl IntoIterator<Item = GraphId<K>>,
+        source_nodes: impl IntoIterator<Item = (&GraphId<K>, &mut Vec<usize>)>,
         target_nodes: impl IntoIterator<Item = TagId> + Clone,
         edge_bounds: impl SampleRange<usize> + Clone,
         reverse_direction: bool,

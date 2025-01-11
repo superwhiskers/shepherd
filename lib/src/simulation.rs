@@ -119,10 +119,10 @@ pub struct Simulation<'a, 'de> {
     tags: Vec<TagId>,
 
     /// Sheep present in the simulation
-    sheep: Vec<SheepId>,
+    sheep: HashMap<SheepId, Vec<usize>>,
 
     /// Items present in the simulation
-    items: Vec<ItemId>,
+    items: HashMap<ItemId, Vec<usize>>,
 
     /// Tag groups present in the simulation
     tag_groups: Vec<HashSet<TagId>>,
@@ -150,10 +150,10 @@ pub struct SimulationParts<'a> {
     pub tags: Vec<TagId>,
 
     /// The sheep present in the simulation
-    pub sheep: Vec<SheepId>,
+    pub sheep: HashMap<SheepId, Vec<usize>>,
 
     /// The items present in the simulation
-    pub items: Vec<ItemId>,
+    pub items: HashMap<ItemId, Vec<usize>>,
 
     /// The tag groups present in the simulation
     pub tag_groups: Vec<HashSet<TagId>>,
